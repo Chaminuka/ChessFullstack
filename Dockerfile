@@ -1,23 +1,27 @@
-# Use the official ASP.NET runtime as a parent image
-FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS base
-WORKDIR /app
-EXPOSE 80
-
-# Use the SDK image to build the application
+# Use the .NET SDK image
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
-WORKDIR /src
-COPY ["ChessBackende8/ChessBackende8.csproj", "ChessBackende8/"]
-RUN dotnet restore "ChessBackende8/ChessBackende8.csproj"
-COPY . .
-WORKDIR "/src/ChessBackende8"
-RUN dotnet build "ChessBackende8.csproj" -c Release -o /app/build
+
+# Set the working directory
+WORKDIR /app
+
+# Copy the project file into the container
+COPY ChessBackende8/ChessBackende8/ChessBackende8.csproj ./ChessBackende8/
+
+# Restore the dependencies
+RUN dotnet restore ChessBackende8/ChessBackende8.csproj
+
+# Copy the entire project folder
+COPY ChessBackende8/ChessBackende8/. ./ChessBackende8/
+
+# Build the application
+RUN dotnet build ChessBackende8/ChessBackende8.csproj -c Release -o out
 
 # Publish the application
 FROM build AS publish
-RUN dotnet publish "ChessBackende8.csproj" -c Release -o /app/publish
+RUN dotnet publish ChessBackende8/ChessBackende8.csproj -c Release -o out
 
 # Final stage
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/aspnet:7.0
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=publish /app/out .
 ENTRYPOINT ["dotnet", "ChessBackende8.dll"]
