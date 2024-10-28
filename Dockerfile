@@ -1,27 +1,18 @@
-# Use the .NET SDK image
+# Build Stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-
-# Set the working directory
 WORKDIR /app
 
-# Copy the project file into the container
-COPY ChessBackende8/ChessBackende8/ChessBackende8.csproj ./ChessBackende8/
-
-# Restore the dependencies
+# Copy and restore dependencies
+COPY ChessBackende8/ChessBackende8.csproj ./ChessBackende8/
 RUN dotnet restore ChessBackende8/ChessBackende8.csproj
 
-# Copy the entire project folder
-COPY ChessBackende8/ChessBackende8/. ./ChessBackende8/
+# Copy project files and build the app
+COPY ChessBackende8/ ./ChessBackende8/
+WORKDIR /app/ChessBackende8
+RUN dotnet publish -c Release -o /app/out
 
-# Build the application
-RUN dotnet build ChessBackende8/ChessBackende8.csproj -c Release -o out
-
-# Publish the application
-FROM build AS publish
-RUN dotnet publish ChessBackende8/ChessBackende8.csproj -c Release -o out
-
-# Final stage
+# Runtime Stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=publish /app/out .
+COPY --from=build /app/out .
 ENTRYPOINT ["dotnet", "ChessBackende8.dll"]
