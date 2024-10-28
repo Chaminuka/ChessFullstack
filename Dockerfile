@@ -1,5 +1,5 @@
 # Use the .NET SDK image
-FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
 # Set the working directory
 WORKDIR /app
@@ -21,7 +21,7 @@ FROM build AS publish
 RUN dotnet publish ChessBackende8/ChessBackende8.csproj -c Release -o out
 
 # Final stage
-FROM mcr.microsoft.com/dotnet/aspnet:7.0
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=publish /app/out .
 ENTRYPOINT ["dotnet", "ChessBackende8.dll"]
