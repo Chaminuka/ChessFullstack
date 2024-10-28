@@ -1,37 +1,34 @@
-# Build Stage for Backend
+# Backend Build Stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS backend-build
 WORKDIR /app
 
-# Copy backend project files and restore dependencies
-COPY ChessBackende8/ChessBackende8/ChessBackende8.csproj ./ChessBackende8/
-RUN dotnet restore ChessBackende8/ChessBackende8.csproj
+# Copy and restore dependencies
+COPY ChessBackende8/ChessBackende8.csproj ./ChessBackende8/
+RUN dotnet restore ./ChessBackende8/ChessBackende8.csproj
 
-# Copy the entire backend project and build
+# Copy and build backend project
 COPY ChessBackende8/ ./ChessBackende8/
 WORKDIR /app/ChessBackende8
 RUN dotnet publish -c Release -o /app/out
 
-# Build Stage for Frontend
+# Frontend Build Stage
 FROM node:18 AS frontend-build
 WORKDIR /frontend
 
-# Copy frontend dependencies and install
-COPY ChessFrontend8/package*.json .  # Copying only the package.json and package-lock.json if they exist
+# Install dependencies and build
+COPY ChessFrontend8/package*.json .
 RUN npm install
-
-# Copy the rest of the frontend files and build
 COPY ChessFrontend8/ .
-RUN npm run build  # Adjust according to your frontend's actual build command
+RUN npm run build  # Adjust if necessary
 
 # Final Stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Copy backend build output
+# Copy backend output
 COPY --from=backend-build /app/out .
 
-# Copy frontend build output to the wwwroot folder of the backend
-COPY --from=frontend-build /frontend/build ./wwwroot  # Adjust build output path if necessary
+# Copy frontend build output (adjust folder if needed)
+COPY --from=frontend-build /frontend/build ./wwwroot
 
-# Entry point for the backend
 ENTRYPOINT ["dotnet", "ChessBackende8.dll"]
