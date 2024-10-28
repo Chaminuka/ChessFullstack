@@ -1,0 +1,50 @@
+﻿@page "/Post"
+@inject HttpClient Http
+@using System.Net.Http.Json
+@rendermode InteractiveServer
+
+<PageTitle>Post</PageTitle>
+
+<h1>Post Game</h1>
+<p>Enter your Username!</p>
+<input type="text" @bind="username" />
+<p>Add a game!</p>
+<input type="text" @bind="pgn" />
+
+<button class="btn btn-primary" @onclick="HandleInput">Enter</button>
+<p>@message</p>
+
+@code {
+    string pgn = string.Empty;
+    string username = string.Empty;
+    string message = string.Empty;
+
+    private async Task HandleInput()
+    {
+        try
+        {
+            var response = await Http.PostAsync($"api/games?gamePgn={pgn}&name={username}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                message = "Game posted successfully!";
+            }
+            else
+            {
+                message = "Failed to post the game: " + response.StatusCode;
+            }
+        }
+        catch (Exception ex)
+        {
+            message = $"An error occurred: {ex.Message}";
+        }
+        Console.WriteLine(message);
+    }
+
+    // Define the model class to match the NewGame parameters
+    public class NewGameRequest
+    {
+        public string GamePgn { get; set; }
+        public string Name { get; set; }
+    }
+}

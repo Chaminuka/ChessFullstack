@@ -1,0 +1,51 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+<PageTitle>Login</PageTitle>
+
+<h1>Login</h1>
+
+<p>Please enter your data. If you don't have an account, please contact support.</p>
+
+<label>Username</label>
+<input type="text" @bind="username" />
+
+<label>Password</label>
+<input type="password" @bind="password" />
+
+<button @onclick="CheckLogin">Login</button>
+
+<p>@message</p>
+
+@code {
+    private string username = string.Empty;
+    private string password = string.Empty;
+    private string message = string.Empty;
+
+
+
+
+
+    private void CheckLogin()
+    {
+        // Use the Login method from Logic to authenticate
+
+
+        Dictionary<string, string> users = new Dictionary<string, string>();
+        users.Add("Guest", "Password");
+        string check = string.Empty;
+        users.TryGetValue(username, out  check!);
+        bool isLoggedIn = (users.ContainsKey(username)&&check.Equals(password));
+
+        if (isLoggedIn)
+        {
+            message = "Login successful!";
+            // Optionally navigate to another page or perform other actions
+        }
+        else
+        {
+            message = "Login failed. Incorrect credentials.";
+        }
+
+        StateHasChanged(); // Refresh the UI to show the updated message
+    }
+}

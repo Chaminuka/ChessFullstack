@@ -1,0 +1,609 @@
+﻿@page "/"
+@rendermode InteractiveServer
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8x8 Inverted Checkerboard with IDs</title>
+    <style>
+        .grid-container {
+            display: grid; /* Enable grid layout */
+            grid-template-columns: repeat(8, 50px); /* 8 columns, each 50px wide */
+            grid-template-rows: repeat(8, 50px); /* 8 rows, each 50px tall */
+            gap: 0; /* No space between squares */
+        }
+
+        .black-square {
+            background-color: cornflowerblue; /* Light blue color */
+        }
+
+        .white-square {
+            background-color: aliceblue; /* White color */
+        }
+
+        .Piece {
+            position: absolute; /* Positioning for movement */
+        }
+
+        /* Styling for promotion options */
+        .promotion-container {
+            position: absolute;
+            display: flex;
+            gap: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 5px;
+            border-radius: 5px;
+        }
+
+        .promotion-piece {
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+
+
+
+
+
+
+<div class="grid-container">
+    @for (int row = 7; row >= 0; row--) // Reverse row order
+    {
+        for (int col = 0; col < 8; col++)
+        {
+            int id = (row * 8) + col; // Adjust ID so 0 starts at the bottom-left and 63 at the top-right
+            bool isBlackSquare = (row + col) % 2 == 0;
+
+            <div class="@((isBlackSquare ? "black-square" : "white-square"))"
+                 @onclick="() => HandleClick(id)"
+                 id="@id" style="position: relative; width: 50px; height: 50px;">
+               @foreach(var piece in pieces)
+                {
+                    @if (id == piece.Value._currPosition)
+                    {
+                        <img src="@piece.Value._src" alt="Chess_Piece" width="50" height="50" class="Piece" />
+                    }
+                }
+
+            </div>
+        }
+    }
+</div>
+
+
+@if (showPromotionOptions)
+{
+    @if (whiteToMove)
+    {
+        <div class="promotion-container">
+            @for (int i = 0; i < promotionOptionsWhite.Count; i++)
+            {
+                var localIndex = i; // Create a local copy of i
+                var option = promotionOptionsWhite[localIndex];
+                <img src="@option" alt="Promotion Option" class="promotion-piece" id="@localIndex" @onclick="() => HandlePromotionClick(localIndex)" />
+            }
+        </div>
+    }
+    else
+    {
+        <div class="promotion-container">
+            @for (int i = 0; i < promotionOptionsBlack.Count; i++)
+            {
+                var localIndex = i; // Create a local copy of i
+                var option = promotionOptionsBlack[localIndex];
+                <img src="@option" alt="Promotion Option" class="promotion-piece" id="@localIndex" @onclick="() => HandlePromotionClickBlack(localIndex)" />
+            }
+        </div>
+    }
+
+}
+
+<p>@Ratio</p>
+
+
+
+
+
+
+@code {
+
+    bool isPromotionPending = false;
+    int currPostion = 0;
+    int promoter = -1;
+    string moves = string.Empty;
+    bool whiteToMove = true;
+    bool move = false;
+    bool isCatching = false;
+    Piece movable = new Piece("", -1, "", false);
+    Chess.ChessBoard board = new Chess.ChessBoard();
+    bool isCastling = false;
+    bool enPesant = false;
+    bool showPromotionOptions = false; // Control visibility of promotion options
+    List<string> promotionOptionsWhite = new()
+     {
+        ".\\Pieces\\3405_white-queen.png",
+        ".\\Pieces\\3406_white-rook.png",
+        ".\\Pieces\\3407_white-bishop.png",
+        ".\\Pieces\\3408_white-knight.png"
+
+    };
+    List<string> promotionOptionsBlack = new()
+     {
+        ".\\Pieces\\3399_black-queen.png",
+        ".\\Pieces\\3400_black-rook.png",
+        ".\\Pieces\\3401_black-bishop.png",
+        ".\\Pieces\\3402_black-knight.png"
+
+    };
+    // Image paths for promotion pieces
+
+    string promotion = string.Empty;
+
+
+
+    // Start position of the King at square 0
+
+
+
+    Piece whiteKing = new Piece("K", 4, ".\\Pieces\\3404_white-king.png", true);
+
+    Piece whiteQueen = new Piece("Q", 3, ".\\Pieces\\3405_white-queen.png", true);
+    Piece whiteBishopW = new Piece("B", 2, ".\\Pieces\\3407_white-bishop.png", true);
+    Piece whiteBishopB = new Piece("B", 5, ".\\Pieces\\3407_white-bishop.png", true);
+    Piece whiteKnightL = new Piece("N", 1, ".\\Pieces\\3408_white-knight.png", true);
+    Piece whiteKnightR = new Piece("N", 6, ".\\Pieces\\3408_white-knight.png", true);
+    Piece whiteRookL = new Piece("R", 0, ".\\Pieces\\3406_white-rook.png", true);
+    Piece whiteRookR = new Piece("R", 7, ".\\Pieces\\3406_white-rook.png", true);
+
+    Piece whitePawnA = new Piece("", 8, ".\\Pieces\\3409_white-pawn.png", true);
+    Piece whitePawnB = new Piece("", 9, ".\\Pieces\\3409_white-pawn.png", true);
+    Piece whitePawnC = new Piece("", 10, ".\\Pieces\\3409_white-pawn.png", true);
+    Piece whitePawnD = new Piece("", 11, ".\\Pieces\\3409_white-pawn.png", true);
+    Piece whitePawnE = new Piece("", 12, ".\\Pieces\\3409_white-pawn.png", true);
+    Piece whitePawnF = new Piece("", 13, ".\\Pieces\\3409_white-pawn.png", true);
+    Piece whitePawnG = new Piece("", 14, ".\\Pieces\\3409_white-pawn.png", true);
+    Piece whitePawnH = new Piece("", 15, ".\\Pieces\\3409_white-pawn.png", true);
+
+    Piece blackKing = new Piece("K", 60, ".\\Pieces\\3398_black-king.png", false);
+    Piece blackQueen = new Piece("Q", 59, ".\\Pieces\\3399_black-queen.png", false);
+    Piece blackBishopW = new Piece("B", 58, ".\\Pieces\\3401_black-bishop.png", false);
+    Piece blackBishopB = new Piece("B", 61, ".\\Pieces\\3401_black-bishop.png", false);
+    Piece blackKnightL = new Piece("N", 57, ".\\Pieces\\3402_black-knight.png", false);
+    Piece blackKnightR = new Piece("N", 62, ".\\Pieces\\3402_black-knight.png", false);
+    Piece blackRookL = new Piece("R", 56, ".\\Pieces\\3400_black-rook.png", false);
+    Piece blackRookR = new Piece("R", 63, ".\\Pieces\\3400_black-rook.png", false);
+
+    Piece blackPawnA = new Piece("", 55, ".\\Pieces\\3403_black-pawn.png", false);
+    Piece blackPawnB = new Piece("", 54, ".\\Pieces\\3403_black-pawn.png", false);
+    Piece blackPawnC = new Piece("", 53, ".\\Pieces\\3403_black-pawn.png", false);
+    Piece blackPawnD = new Piece("", 52, ".\\Pieces\\3403_black-pawn.png", false);
+    Piece blackPawnE = new Piece("", 51, ".\\Pieces\\3403_black-pawn.png", false);
+    Piece blackPawnF = new Piece("", 50, ".\\Pieces\\3403_black-pawn.png", false);
+    Piece blackPawnG = new Piece("", 49, ".\\Pieces\\3403_black-pawn.png", false);
+    Piece blackPawnH = new Piece("", 48, ".\\Pieces\\3403_black-pawn.png", false);
+
+    Dictionary<int, Piece> pieces = new Dictionary<int, Piece>();
+    List<string> movesPlayed = new List<string>();
+
+
+    Logic logic = new Logic(new HttpClient());
+    string Ratio = string.Empty;
+
+
+    protected override void OnInitialized()
+    {
+
+        pieces.Clear();
+        pieces.Add(whiteKing._currPosition, whiteKing);
+        pieces.Add(whiteQueen._currPosition, whiteQueen);
+        pieces.Add(whiteBishopW._currPosition, whiteBishopW);
+        pieces.Add(whiteBishopB._currPosition, whiteBishopB);
+        pieces.Add(whiteKnightL._currPosition, whiteKnightL);
+        pieces.Add(whiteKnightR._currPosition, whiteKnightR);
+        pieces.Add(whiteRookL._currPosition, whiteRookL);
+        pieces.Add(whiteRookR._currPosition, whiteRookR);
+
+        pieces.Add(whitePawnA._currPosition, whitePawnA);
+        pieces.Add(whitePawnB._currPosition, whitePawnB);
+        pieces.Add(whitePawnC._currPosition, whitePawnC);
+        pieces.Add(whitePawnD._currPosition, whitePawnD);
+        pieces.Add(whitePawnE._currPosition, whitePawnE);
+        pieces.Add(whitePawnF._currPosition, whitePawnF);
+        pieces.Add(whitePawnG._currPosition, whitePawnG);
+        pieces.Add(whitePawnH._currPosition, whitePawnH);
+
+        pieces.Add(blackKing._currPosition, blackKing);
+        pieces.Add(blackQueen._currPosition, blackQueen);
+        pieces.Add(blackBishopW._currPosition, blackBishopW);
+        pieces.Add(blackBishopB._currPosition, blackBishopB);
+        pieces.Add(blackKnightL._currPosition, blackKnightL);
+        pieces.Add(blackKnightR._currPosition, blackKnightR);
+        pieces.Add(blackRookL._currPosition, blackRookL);
+        pieces.Add(blackRookR._currPosition, blackRookR);
+
+        pieces.Add(blackPawnA._currPosition, blackPawnA);
+        pieces.Add(blackPawnB._currPosition, blackPawnB);
+        pieces.Add(blackPawnC._currPosition, blackPawnC);
+        pieces.Add(blackPawnD._currPosition, blackPawnD);
+        pieces.Add(blackPawnE._currPosition, blackPawnE);
+        pieces.Add(blackPawnF._currPosition, blackPawnF);
+        pieces.Add(blackPawnG._currPosition, blackPawnG);
+        pieces.Add(blackPawnH._currPosition, blackPawnH);
+
+    }
+
+
+
+    public class Piece
+    {
+
+        private string _type;
+        public int _currPosition { get; set; }
+        public string _src { get; set; }
+        public bool _isWhite { get; set; }
+        public Piece(string type, int currPostion, string src, bool isWhite)
+        {
+            _currPosition = currPostion;
+            _type = type;
+            _src = src;
+            _isWhite = isWhite;
+
+        }
+        public void SetChar(string c)
+        {
+            _type = c;
+        }
+        public string GetChar()
+        {
+            return _type;
+        }
+
+    }
+
+
+    private string MakeMove(Piece piece, int target)
+    {
+
+        int col = target % 8;
+        int row = (target - col) / 8;
+        var colToLetter = new Dictionary<int, string>();
+        string letters = "abcdefgh";
+        string ret = string.Empty;
+        row++;
+        for (int i = 0; i < 8; i++)
+        {
+            colToLetter.Add(i, letters[i] + "");
+        }
+
+        if (isPromoting)
+        {
+            isPromoting = false;
+            string insert = string.Empty;
+            if ((target - piece._currPosition) % 8 != 0)
+            {
+                insert = colToLetter[piece._currPosition%8]+"x";
+            }
+            return insert + colToLetter[col] + row + "=" + promotion;
+
+
+        }
+
+
+        if(piece._currPosition+2 == target || piece._currPosition-2 == target)
+        {
+            if (piece.GetChar().Equals("K"))
+            {
+                if(piece._currPosition +2 == target)
+                {
+                    isCastling = true;
+                    return "O-O";
+
+                }
+                else
+                {
+                    isCastling = true;
+                    return "O-O-O";
+                }
+            }
+        }
+
+
+        if (!isCatching && !((piece.GetChar().Equals("")&&(target-piece._currPosition)%8 !=0)))
+        {
+
+
+            return piece.GetChar() + colToLetter[col] + row;
+
+        }
+
+        ret = piece.GetChar() + "x" + colToLetter[col] + row;
+
+        //pawn captrues.
+        if (piece.GetChar().Equals(""))
+        {
+            if (pieces.ContainsKey(target))
+            {
+                //Non en pesant.
+                ret =  colToLetter[piece._currPosition % 8] + "x" + colToLetter[col] + row;
+            }
+            else
+            {
+                // en pesant
+                if (whiteToMove)
+                {
+                    ret = colToLetter[piece._currPosition % 8] + "x" + colToLetter[col] + (row);
+                    enPesant = true;
+
+                }
+                else
+                {
+                    ret = colToLetter[piece._currPosition % 8] + "x" + colToLetter[col] + (row);
+                    enPesant = true;
+                }
+
+            }
+
+
+        }
+
+        return ret;
+
+
+
+
+    }
+    bool isPromoting = false;
+
+    private void HandlePromotionClick(int id)
+    {
+        showPromotionOptions = false;
+        StateHasChanged();
+        promotion = PromotesTo(id); // Capture selected promotion option
+        promoter = id;// Hide the options once one is selected
+        isPromoting = true;// Trigger UI update
+        HandleMove(currPostion);
+        isPromoting = false;
+        isPromotionPending = false;
+    }
+
+    private void HandlePromotionClickBlack(int id)
+    {
+        showPromotionOptions = false;
+        StateHasChanged();
+        promotion = PromotesTo(id); // Capture selected promotion option
+        promoter = id;// Hide the options once one is selected
+        isPromoting = true;
+        // Trigger UI update
+        HandleMove(currPostion);
+        isPromoting = false;
+        isPromotionPending = false;
+    }
+
+
+
+
+    private string PromotesTo(int id)
+    {
+
+
+        // Show the promotion options
+        StateHasChanged(); // Trigger UI update
+
+        switch (id)
+        {
+            case 0:
+                return "Q";
+            case 1:
+                return "R";
+            case 2:
+                return "B";
+            case 3:
+                return "N";
+        }
+        return null!;
+    }
+
+    private void HandleClick(int id)
+    {
+        if (isPromotionPending)
+        {
+            Console.WriteLine("Waiting for promotion selection.");
+            return;
+        }
+
+        currPostion = id;
+
+        if (move)
+        {
+
+            if (movable._isWhite == whiteToMove)
+            {
+                HandleMove(id);
+            }
+            else
+            {
+                move = false;
+            }
+
+
+
+        }
+        else
+        {
+            Initial(id);
+        }
+    }
+
+
+
+
+
+    private void Initial(int id)
+    {
+
+        if (pieces.ContainsKey(id))
+        {
+            movable = pieces[id];
+            move = true;
+        }
+
+    }
+    string FEN = string.Empty;
+
+    private async void HandleMove(int id)
+    {
+        string pgn = string.Empty;
+
+
+        // Update the position to the clicked square
+        if (isPromoting)
+        {
+
+
+            isCatching = pieces.ContainsKey(id);
+            pgn = moves + " " + MakeMove(movable, id);
+            if (await logic.ValidateMove(pgn))
+            {
+                FEN = await logic.FetchFEN(pgn);
+                Ratio = await logic.GetRatio(FEN);
+                moves = pgn;
+                whiteToMove = !whiteToMove;
+                pieces.Remove(movable._currPosition);
+                if (pieces.ContainsKey(id))
+                {
+                    pieces.Remove(id);
+                }
+                movable._currPosition = id;
+                movable.SetChar(promotion);
+                if (!whiteToMove)
+                {
+                    if(promotion == "Q")
+                    {
+                        movable._src = ".\\Pieces\\3405_white-queen.png";
+                    }
+                    if(promotion == "R")
+                    {
+                        movable._src = ".\\Pieces\\3406_white-rook.png";
+                    }
+                    if(promotion == "N")
+                    {
+                        movable._src = ".\\Pieces\\3408_white-knight.png";
+                    }
+                    if (promotion == "B")
+                    {
+                        movable._src = ".\\Pieces\\3407_white-bishop.png";
+                    }
+                }
+                else
+                {
+                    if (promotion == "Q")
+                    {
+                        movable._src = ".\\Pieces\\3399_black-queen.png";
+                    }
+                    if (promotion == "R")
+                    {
+                        movable._src = ".\\Pieces\\3400_black-rook.png";
+                    }
+                    if (promotion == "N")
+                    {
+                        movable._src = ".\\Pieces\\3402_black-knight.png";
+                    }
+                    if (promotion == "B")
+                    {
+                        movable._src = ".\\Pieces\\3401_black-bishop.png";
+                    }
+
+
+
+                }
+
+                pieces.Add(movable._currPosition, movable);
+
+                StateHasChanged();
+                return;
+
+            }
+
+
+        }
+        move = false;
+        isCatching = pieces.ContainsKey(id);
+        if((id < 8 && movable.GetChar().Equals("")) || (id > 55 && movable.GetChar().Equals("")))
+        {
+            showPromotionOptions = true;
+            isPromotionPending = true;
+            StateHasChanged();
+            return;
+        }
+        pgn = moves + " " + MakeMove(movable, id);
+
+
+
+        if (await logic.ValidateMove(pgn))
+        {
+            FEN = await logic.FetchFEN(pgn);
+            Ratio = await logic.GetRatio(FEN);
+            if (enPesant)
+            {
+                if (whiteToMove)
+                {
+                    pieces.Remove(id - 8);
+                }
+                else
+                {
+                    pieces.Remove(id + 8);
+                }
+                enPesant = false;
+
+            }
+            moves = pgn;
+
+
+            whiteToMove = !whiteToMove;
+            if (isCastling)
+            {
+
+                if(id == (movable._currPosition +2))
+                {
+                    //Castles King side.
+                    Piece tempRook = new Piece("", -1, "", false);
+                    pieces.TryGetValue(movable._currPosition + 3, out tempRook!);
+                    tempRook._currPosition -= 2;
+                    pieces.Remove(tempRook._currPosition);
+                    pieces.Add(id - 1, tempRook);
+                }
+                else
+                {
+                    //Castles Queen side.
+                    Piece tempRook = new Piece("", -1, "", false);
+                    pieces.TryGetValue(movable._currPosition - 4, out tempRook!);
+                    tempRook._currPosition += 3;
+                    pieces.Remove(tempRook._currPosition);
+                    pieces.Add(id + 1, tempRook);
+
+
+                }
+                isCastling = false;
+            }
+            pieces.Remove(movable._currPosition);
+            if (pieces.ContainsKey(id))
+            {
+                pieces.Remove(id);
+            }
+            movable._currPosition = id;
+            pieces.Add(movable._currPosition, movable);
+            StateHasChanged();
+        }
+        else
+        {
+            Console.WriteLine("Invalid request");
+        }
+
+
+
+    }
+
+}
