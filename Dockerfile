@@ -15,13 +15,13 @@ RUN dotnet publish -c Release -o /app/out
 FROM node:18 AS frontend-build
 WORKDIR /frontend
 
-# Copy frontend project files and install dependencies
-COPY ChessFrontend8/package*.json ./
+# Copy frontend dependencies and install
+COPY ChessFrontend8/package*.json .  # Copying only the package.json and package-lock.json if they exist
 RUN npm install
 
 # Copy the rest of the frontend files and build
-COPY ChessFrontend8/ ./
-RUN npm run build  # Adjust this to your frontend's build command
+COPY ChessFrontend8/ .
+RUN npm run build  # Adjust according to your frontend's actual build command
 
 # Final Stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
@@ -30,8 +30,8 @@ WORKDIR /app
 # Copy backend build output
 COPY --from=backend-build /app/out .
 
-# Copy frontend build output
-COPY --from=frontend-build /frontend/build ./wwwroot  # Assuming frontend builds to `build` folder
+# Copy frontend build output to the wwwroot folder of the backend
+COPY --from=frontend-build /frontend/build ./wwwroot  # Adjust build output path if necessary
 
 # Entry point for the backend
 ENTRYPOINT ["dotnet", "ChessBackende8.dll"]
