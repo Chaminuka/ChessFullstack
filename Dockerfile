@@ -11,6 +11,9 @@ COPY ChessBackende8/ ./ChessBackende8/
 WORKDIR /app/ChessBackende8/ChessBackende8
 RUN dotnet publish -c Release -o /app/out
 
+# Optional: Debugging command to check the directory contents before proceeding
+RUN ls -R /app  # Lists all files in /app directory
+
 # Build Stage for Frontend
 FROM node:18 AS frontend-build
 WORKDIR /frontend
@@ -23,6 +26,9 @@ RUN npm install # Now installs in the current directory (which is /frontend)
 COPY ChessFrontend8/ ./ChessFrontend8/
 RUN npm run build --prefix ./ChessFrontend8  # Build command should run within ChessFrontend8
 
+# Optional: Debugging command to check the frontend build output
+RUN ls -R /frontend  # Lists all files in /frontend directory
+
 # Final Stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
@@ -34,4 +40,4 @@ COPY --from=backend-build /app/out .
 COPY --from=frontend-build /frontend/ChessFrontend8/build ./wwwroot  # Adjust build output path if necessary
 
 # Entry point for the backend
-ENTRYPOINT ["dotnet", "ChessBackende8.dll"]
+ENTRYPOINT ["dotnet", "ChessBackende8/ChessBackende8.dll"]
